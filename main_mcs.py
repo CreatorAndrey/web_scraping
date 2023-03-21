@@ -5,14 +5,19 @@ from selenium.webdriver import Chrome
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
 from tkinter import *
 from tkinter.messagebox import showerror, showinfo
 
+import start_excel
+from start_excel import *
+
 xpath_login = '//*[@id="login"]'
 xpath_password = '//*[@id="password"]'
-xpath_button = '/html/body/div/div/div/div/div/div/div/div[3]/form/button'
-xpath_notice = '//*[@id="block-system-main-menu"]/ul/li/ul/li[3]/ul/li[4]/a'
+xpath_button = '/html/body/div/div/div/div/div/div/div/div[3]/form/button'          #кнопка авторизации
+xpath_go = ''           #ссылка второй страницы, "перейти"
+xpath_notice = '//*[@id="block-system-main-menu"]/ul/li/ul/li[3]/ul/li[4]/a'        #поле с водом номера уведомления
 url_entry = 'https://passport.cgu.mchs.ru/oauth/login?login_challenge=9043dbc4bed146c3ae16ef4e6c39fa7e'
 s = Service("chromedriver.exe")
 browser = Chrome(service=s)
@@ -42,11 +47,25 @@ def entry():
     if len(br_login) == 0:
         showinfo('Вход','Успешный вход')
         btn_entry.configure(state='disabled')
-        br_notice = browser.find_element(By.XPATH, xpath_notice)
+        try:
+            br_go = browser.find_element(By.XPATH, xpath_go)
+        except:
+            showerror('Ошибка', 'Не найдена ссылка')
+            return
+        br_go.click()
+        sleep(2)
+        try:
+            br_notice = browser.find_element(By.XPATH, xpath_notice)
+        except:
+            showerror('Ошибка', 'Не найдена ссылка')
+            return
         br_notice.click()
+        btn_start.configure(state='normal')
     else:
         showerror('Ошибка', 'Ошибка входа')
 
+# def start():
+#     start_excel.get_number()
 
 window = Tk()
 window.title('Программа')
@@ -57,10 +76,12 @@ lbl_demo = Label(window, text = 'ДЕМО', font=('Arial',18,'bold'))
 txt_login = Entry(window, width=20)
 txt_password = Entry(window, width=20)
 btn_entry = Button(window, text='Войти', width=17, command=entry)
+btn_start = Button(window, text='Начать заполнение', state='disabled', command=start)
 lbl_login.grid(column=0, row=0)
-lbl_demo.grid(column=3, row=0)
+lbl_demo.grid(column=2, row=0)
 txt_login.grid(column=1, row=0)
 lbl_password.grid(column=0, row=1)
 txt_password.grid(column=1, row=1)
 btn_entry.grid(column=1, row=2)
+btn_start.grid(column=2, row=2)
 window.mainloop()
