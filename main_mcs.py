@@ -20,13 +20,14 @@ xpath_password = '//*[@id="password"]'
 xpath_button = '/html/body/div/div/div/div/div/div/div/div[3]/form/button'          #кнопка авторизации
 xpath_go = '/html/body/div/div/div/div/div/div[4]/div/div/div/div[2]/div/div[2]/div/div/div/a'           #ссылка второй страницы, "перейти"
 xpath_notice = '//*[@id="block-system-main-menu"]/ul/li/ul/li[3]/ul/li[4]/a'        #уведомление
+xpath_filter_open = '/html/body/div[2]/div/section/h1/span[2]'
 xpath_apply = '//*[@id="edit-submit-fgpn-license-notification-record"]'         # кнопка применить
 xpath_number = '//*[@id="edit-field-gl-registry-num-value"]'           # ссылка на поле с вводом номера регистрации
 xpath_open = '//*[@id="block-system-main"]/div/div[2]/div/table/tbody/tr/td[12]/div/a/span'     # забавный файлик
 
 url_entry = 'https://passport.cgu.mchs.ru/oauth/login?login_challenge=9043dbc4bed146c3ae16ef4e6c39fa7e'
-#s = Service("chromedriver.exe")
-browser = Chrome(ChromeDriverManager().install())
+s = Service("chromedriver.exe")
+browser = Chrome(service=s)
 
 def entry():
     try:
@@ -98,14 +99,21 @@ def get_number(folder):
         logging.exception(f'Лист не найден')
         return
     try:
-        br_number = browser.find_element(By.XPATH, xpath_number)
+        br_filter_open = browser.find_element(By.XPATH, xpath_filter_open)      # находим кнопку фильтра
+        logging.info("The filter is opening successfully")
+    except:
+        logging.exception("The filter isn't opening successfully")
+        return
+    br_filter_open.click()          # кликаем на кнопку фильтра
+    try:
+        br_number = browser.find_element(By.XPATH, xpath_number)        # находим поле с вводом номера регистрации
         logging.info('Элемент br_number упешно найден')
     except:
         showerror('Ошибка', 'Не удается найти элемент')
         logging.exception('Элемент br_number не найден')
         return
     try:
-        br_apply = browser.find_element(By.XPATH, xpath_apply)
+        br_apply = browser.find_element(By.XPATH, xpath_apply)          # находим поле с кнопкой "применить"
         logging.info('Элемент br_apply упешно найден')
     except:
         showerror('Ошибка', 'Не удается найти элемент')
@@ -116,8 +124,19 @@ def get_number(folder):
     for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count, values_only=True):
         for cell in col:
             number = cell
-            br_number.send_keys(number)
-            br_apply.click()
+            logging.info(f"Take number {number} from worklist")
+            try:
+                br_number.send_keys(number)         # отправляем номер в поле регистрации
+                logging.info("the number from excel is sended in br_number complitely ")
+            except:
+                logging.exception("the number from excel is not sended in br_number")
+                return
+            try:
+                br_apply.click()            # нажимаем на кнопку "применить"
+                logging.info("Click on button_apply is successful")
+            except:
+                logging.exception("Click on button_apply isn't successful")
+                return
             sleep(2)
             try:
                 br_open = browser.find_element(By.XPATH, xpath_open)           # находим забавный файлик
@@ -127,16 +146,12 @@ def get_number(folder):
                 logging.exception('Не найден элемент br_open')
                 #код с переходом на следующий элемент
                 return
-            br_open.click()
+            br_open.click()         # нажимаем на кнопку с файликом
             showinfo('Ок','поиск по номеру завершен')
 
 def start():
     folder_xl = txt_folder_xl.get()
-    try:
-        get_number(folder_xl)
-    except:
-        showerror('Ошибка', 'Ошибка входа в функцию')
-        logging.exception('Ошибка входа в функцию')
+    get_number(folder_xl)
 
 window = Tk()
 window.title('Программа')
