@@ -3,31 +3,36 @@
 # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path
 
 from selenium.webdriver import Chrome
-from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 from time import sleep
 from tkinter import *
 from tkinter.messagebox import showerror, showinfo
 from openpyxl import load_workbook
 import logging
+from bs4 import BeautifulSoup
 
-logging.basicConfig(level=logging.DEBUG, filename='log.log', filemode='w', format="%(asctime)s %(levelname)s %(message)s")
+logging.basicConfig(level=logging.DEBUG, filename='log.log', filemode='w',
+                    format="%(asctime)s %(levelname)s %(message)s")
 
 xpath_login = '//*[@id="login"]'
 xpath_password = '//*[@id="password"]'
-xpath_button = '/html/body/div/div/div/div/div/div/div/div[3]/form/button'          #кнопка авторизации
-xpath_go = '/html/body/div/div/div/div/div/div[4]/div/div/div/div[2]/div/div[2]/div/div/div/a'           #ссылка второй страницы, "перейти"
-xpath_notice = '//*[@id="block-system-main-menu"]/ul/li/ul/li[3]/ul/li[4]/a'        #уведомление
+xpath_button = '/html/body/div/div/div/div/div/div/div/div[3]/form/button'          # кнопка авторизации
+xpath_go = '/html/body/div/div/div/div/div/div[4]/div/div/div/div[2]/div/div[2]/div/div/div/a'           # ссылка второй страницы, "перейти"
+xpath_notice = '//*[@id="block-system-main-menu"]/ul/li/ul/li[3]/ul/li[4]/a'        # уведомление
 xpath_filter_open = '/html/body/div[2]/div/section/h1/span[2]'
 xpath_apply = '//*[@id="edit-submit-fgpn-license-notification-record"]'         # кнопка применить
 xpath_number = '//*[@id="edit-field-gl-registry-num-value"]'           # ссылка на поле с вводом номера регистрации
 xpath_open = '//*[@id="block-system-main"]/div/div[2]/div/table/tbody/tr/td[12]/div/a/span'     # забавный файлик
+class_date_registration = 'field-name-field-gl-registry-date'
+class_date_end = 'field-name-field-fgpn-notify-end-date'
 
 url_entry = 'https://passport.cgu.mchs.ru/oauth/login?login_challenge=9043dbc4bed146c3ae16ef4e6c39fa7e'
 s = Service("chromedriver.exe")
 browser = Chrome(service=s)
+
 
 def entry():
     try:
@@ -44,7 +49,7 @@ def entry():
         br_button = browser.find_element(By.XPATH, xpath_button)
         logging.info(f'Элементы br_button, br_login, br_password успешно найдены')
     except:
-        showerror('Ошибка','Не найден элемент')
+        showerror('Ошибка', 'Не найден элемент')
         logging.exception(f'Один из элементов br_button, br_login, br_password не найден')
         return
     login = txt_login.get()
@@ -52,11 +57,11 @@ def entry():
     br_login.send_keys(login)
     br_password.send_keys(password)
     br_button.click()
-    #browser.refresh()
-    #sleep(2)
+    # browser.refresh()
+    # sleep(2)
     br_login = browser.find_elements(By.XPATH, xpath_login)
     if len(br_login) == 0:
-        showinfo('Вход','Успешный вход')
+        showinfo('Вход', 'Успешный вход')
         btn_entry.configure(state='disabled')
         try:
             br_go = browser.find_element(By.XPATH, xpath_go)            # ищем ссылку "перейти"
@@ -81,6 +86,7 @@ def entry():
     else:
         showerror('Ошибка', 'Ошибка входа')
         logging.exception('Ошибка входа')
+
 
 def get_number(folder):
     logging.info('Успешно вошли в функцию get_number')
@@ -119,11 +125,11 @@ def get_number(folder):
         showerror('Ошибка', 'Не удается найти элемент')
         logging.exception('Элемент br_apply не найден')
         return
-    numbers_excel = ws['C']
-    count = len(numbers_excel)
-    for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count, values_only=True):
+    numbers_excel = ws['C']         # берем все ячейки C
+    count = len(numbers_excel)      # считаем кол-во ячеек непустых
+    for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
         for cell in col:
-            number = cell
+            number = cell.value
             logging.info(f"Take number {number} from worklist")
             try:
                 br_number.send_keys(number)         # отправляем номер в поле регистрации
@@ -144,25 +150,76 @@ def get_number(folder):
             except:
                 showerror('Ошибка', 'Не найден элемент')
                 logging.exception('Не найден элемент br_open')
-                #код с переходом на следующий элемент
+                # код с переходом на следующий элемент
                 return
             br_open.click()         # нажимаем на кнопку с файликом
-            showinfo('Ок','поиск по номеру завершен')
+            logging.info('Click on the img_file')
+            html = browser.page_source          # берем html страницы
+            logging.info('Take the html')
+            list_excel = parser(html)            # передаем html в парсер и создаем список list_excel
+            logging.info('start insert data into excel')
+
+            # начинаем подстановку в Excel
+            r = cell.row
+            c = cell.column + 1
+            for i in list_excel:
+                logging.info(f'insert {i}')
+                ws.cell(row=r, column=c, value=i)
+                c += 1
+            wb.save('Auto.xlsx')
+            browser.back()
+            logging.info('The Browser go back')
+    wb.close()
+    showinfo('Уведомление', 'Сбор информации завершен')
+
+
+def parser(html):
+    logging.info('In parser function')
+    list_excel = []
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        logging.info("The soup is creating successful")
+    except:
+        logging.exception("Problem with creating the soup")
+        return
+
+    # парсинг даты регистрации
+    pr_date_registration = soup.find_all('div', class_=class_date_registration)
+    logging.info('parsing date of registration')
+    if len(pr_date_registration) == 0:
+        showinfo('Уведомление', 'Не найдена дата регистрации')
+    span_reg = pr_date_registration[0]
+    date_reg = span_reg.find_next('span').string
+    list_excel.append(date_reg + 'авто')
+    logging.info('Append to the list the date of reg.')
+
+    # парсинг даты завершения работ
+    pr_date_end = soup.find_all('div', class_=class_date_end)
+    logging.info('parsing date of ending')
+    if len(pr_date_end) == 0:
+        showinfo('Уведомление', 'Не найдена дата окончания работ')
+    span_end = pr_date_registration[0]
+    date_end = span_end.find_next('span').string
+    list_excel.append(date_end + 'авто')
+    logging.info('append in list date of end')
+    return list_excel
+
 
 def start():
     folder_xl = txt_folder_xl.get()
     get_number(folder_xl)
+
 
 window = Tk()
 window.title('Программа')
 window.geometry('400x250')
 lbl_login = Label(window, text="Логин:")
 lbl_password = Label(window, text="Пароль:")
-lbl_demo = Label(window, text = 'ДЕМО', font=('Arial',18,'bold'))
+lbl_demo = Label(window, text='ДЕМО', font=('Arial', 18, 'bold'))
 lbl_folder = Label(window, text='Расположение файла Excel')
 txt_login = Entry(window, width=20)
 txt_password = Entry(window, width=20)
-txt_folder_xl = Entry(window, width = 20, state='disabled')
+txt_folder_xl = Entry(window, width=20, state='disabled')
 btn_entry = Button(window, text='Войти', width=17, command=entry)
 btn_start = Button(window, text='Начать заполнение', state='disabled', command=start)
 lbl_login.grid(column=0, row=0)
