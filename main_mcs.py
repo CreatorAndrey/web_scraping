@@ -111,20 +111,6 @@ def get_number(folder):
         logging.exception("The filter isn't opening successfully")
         return
     br_filter_open.click()          # кликаем на кнопку фильтра
-    try:
-        br_number = browser.find_element(By.XPATH, xpath_number)        # находим поле с вводом номера регистрации
-        logging.info('Элемент br_number упешно найден')
-    except:
-        showerror('Ошибка', 'Не удается найти элемент')
-        logging.exception('Элемент br_number не найден')
-        return
-    try:
-        br_apply = browser.find_element(By.XPATH, xpath_apply)          # находим поле с кнопкой "применить"
-        logging.info('Элемент br_apply упешно найден')
-    except:
-        showerror('Ошибка', 'Не удается найти элемент')
-        logging.exception('Элемент br_apply не найден')
-        return
     numbers_excel = ws['C']         # берем все ячейки C
     count = len(numbers_excel)      # считаем кол-во ячеек непустых
     for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
@@ -132,16 +118,32 @@ def get_number(folder):
             number = cell.value
             logging.info(f"Take number {number} from worklist")
             try:
+                br_number = browser.find_element(By.XPATH, xpath_number)  # находим поле с вводом номера регистрации
+                logging.info('Элемент br_number упешно найден')
+            except:
+                showerror('Ошибка', 'Не удается найти элемент')
+                logging.exception('Элемент br_number не найден')
+                return
+            try:
+                br_apply = browser.find_element(By.XPATH, xpath_apply)  # находим поле с кнопкой "применить"
+                logging.info('Элемент br_apply упешно найден')
+            except:
+                showerror('Ошибка', 'Не удается найти элемент')
+                logging.exception('Элемент br_apply не найден')
+                return
+            logging.info('Clear the input textarea')
+            br_number.clear()
+            try:
                 br_number.send_keys(number)         # отправляем номер в поле регистрации
-                logging.info("the number from excel is sended in br_number complitely ")
+                logging.info("the number from excel is sended in the br_number complitely ")
             except:
                 logging.exception("the number from excel is not sended in br_number")
                 return
             try:
                 br_apply.click()            # нажимаем на кнопку "применить"
-                logging.info("Click on button_apply is successful")
+                logging.info("Click on the button_apply is successful")
             except:
-                logging.exception("Click on button_apply isn't successful")
+                logging.exception("Click on the button_apply isn't successful")
                 return
             sleep(2)
             try:
@@ -167,7 +169,7 @@ def get_number(folder):
                 ws.cell(row=r, column=c, value=i)
                 c += 1
             wb.save('Auto.xlsx')
-            browser.back()
+            browser.back()          # переходим назад на страницу поиска по номеру
             logging.info('The Browser go back')
     wb.close()
     showinfo('Уведомление', 'Сбор информации завершен')
