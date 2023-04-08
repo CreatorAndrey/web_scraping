@@ -2,6 +2,8 @@
 # https://questu.ru/articles/81673/
 # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path
 # https://www.geeksforgeeks.org/python-tkinter-scrolledtext-widget/
+
+# https://ru.stackoverflow.com/questions/1194013/%D0%9F%D1%80%D0%B8%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D1%8B-%D0%BF%D0%BE-%D0%BD%D0%B0%D0%B6%D0%B0%D1%82%D0%B8%D1%8E-%D0%BA%D0%BD%D0%BE%D0%BF%D0%BA%D0%B8
 import tkinter
 
 from selenium.webdriver import Chrome
@@ -91,6 +93,7 @@ def entry():
         br_notice.click()           # кликаем и переходим на страницу с поиском
         txt_folder_xl.configure(state='normal')
         btn_start.configure(state='normal')
+        btn_check.configure(state='normal')
         sleep(2)
     else:
         showerror('Ошибка', 'Ошибка входа')
@@ -113,6 +116,15 @@ def get_number(folder):
         showerror('Ошибка', 'Не найден лист')
         logging.exception(f'Лист не найден')
         return
+    try:
+        wb.save(folder)
+    except PermissionError:
+        showerror('Ошибка', f'Необходимо закрыть файл {folder}. Закройте файл и нажмите на кнопку заново заново')
+        logging.exception('файл открыт')
+        wb.close()
+        return
+    else:
+        logging.info('Файл закрыт, идем дальше')
     try:
         br_filter_open = browser.find_element(By.XPATH, xpath_filter_open)      # находим кнопку фильтра
         logging.info("The filter is opening successfully")
@@ -186,20 +198,135 @@ def get_number(folder):
                     logging.exception('ошибка заполнения ячейки')
                 else:
                     logging.info('Найдена ячейка и заплнена')
-
-                try:
-                    wb.save()
-                except Exception:
-                    logging.exception('ошибка сохранения книги')
-                else:
-                    logging.info('Сохранение книги')
                 c += 1
+            try:
+                wb.save(folder)
+            except Exception:
+                logging.exception('ошибка сохранения книги')
+            else:
+                logging.info('Сохранение книги')
             browser.back()          # переходим назад на страницу поиска по номеру
             logging.info('The Browser go back')
     wb.close()
     logging.info('The end of the parsing')
+    text_log.configure(state='disabled')
     showinfo('Уведомление', 'Сбор информации завершен')
 
+def get_number2(folder):
+    logging.info('Успешно вошли в функцию get_number2')
+    try:
+        wb = load_workbook(folder)
+        logging.info(f'Книга успешно открыта по адресу {folder}')
+    except Exception:
+        showerror('Ошибка', 'Не удается подключиться к книге Excel')
+        logging.exception(f'Не удается подключиться к книге по пути {folder}')
+        return
+    try:
+        ws = wb['Главный_лист']
+        logging.info('Лист Excel успешно открыт')
+    except Exception:
+        showerror('Ошибка', 'Не найден лист')
+        logging.exception(f'Лист не найден')
+        return
+    try:
+        wb.save(folder)
+    except PermissionError:
+        showerror('Ошибка', f'Необходимо закрыть файл {folder}. Закройте файл и нажмите на кнопку заново заново')
+        logging.exception('файл открыт')
+        wb.close()
+        return
+    else:
+        logging.info('Файл закрыт, идем дальше')
+    try:
+        br_filter_open = browser.find_element(By.XPATH, xpath_filter_open)      # находим кнопку фильтра
+        logging.info("The filter is opening successfully")
+    except Exception:
+        logging.exception("The filter isn't opening successfully")
+        return
+    br_filter_open.click()          # кликаем на кнопку фильтра
+    numbers_excel = ws['C']         # берем все ячейки C
+    count = len(numbers_excel)      # считаем кол-во ячеек непустых
+    for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
+        for cell in col:
+            number = cell.value
+            logging.info(f"Take number {number} from worklist")
+            if number is None:          # если в excel пустоя ячейка (отсутствует номер), исключаем None. Иначе ошибка TypeError в send_keys()
+                logging.info(f"Take number number from worklist, number is {number}, break")
+                break
+            try:
+                br_number = browser.find_element(By.XPATH, xpath_number)  # находим поле с вводом номера регистрации
+                logging.info('Элемент br_number упешно найден')
+            except Exception:
+                showerror('Ошибка', 'Не удается найти элемент')
+                logging.exception('Элемент br_number не найден')
+                return
+            try:
+                br_apply = browser.find_element(By.XPATH, xpath_apply)  # находим поле с кнопкой "применить"
+                logging.info('Элемент br_apply упешно найден')
+            except Exception:
+                showerror('Ошибка', 'Не удается найти элемент')
+                logging.exception('Элемент br_apply не найден')
+                return
+            logging.info('Clear the input textarea')
+            br_number.clear()
+            try:
+                br_number.send_keys(number)         # отправляем номер в поле регистрации
+                logging.info("the number from excel is sended in the br_number complitely ")
+            except Exception:
+                logging.exception("the number from excel is not sended in br_number")
+                return
+            try:
+                br_apply.click()            # нажимаем на кнопку "применить"
+                logging.info("Click on the button_apply is successful")
+            except Exception:
+                logging.exception("Click on the button_apply isn't successful")
+                return
+            sleep(2)
+            try:
+                br_open = browser.find_element(By.XPATH, xpath_open)           # находим забавный файлик
+                logging.info('Элемент br_open найден')
+            except Exception:
+                # showerror('Ошибка', 'Не найден элемент')
+                logging.exception('Не найден элемент br_open')
+                # код с переходом на следующий элемент
+                text_log.insert(END, f"Номер {number}, не найден 'файлик' (D)\n")
+                break
+            br_open.click()         # нажимаем на кнопку с файликом
+            logging.info('Click on the img_file')
+            html = browser.page_source          # берем html страницы
+            logging.info('Take the html')
+            #logging.info(html)
+            list_excel = parser2(html, number)            # передаем html в парсер и создаем список list_excel
+            logging.info('start insert data into excel')
+
+            # начинаем подстановку в Excel
+            r = cell.row
+            c = cell.column + 2
+            for i in list_excel:
+                logging.info(f'insert {i}')
+                if i == "":
+                    c += 1
+                    break
+                try:
+                    ws.cell(row=r, column=c, value=i)
+                except Exception:
+                    logging.exception('ошибка заполнения ячейки')
+                else:
+                    logging.info('Найдена ячейка и заполнена')
+                c += 1
+            try:
+                wb.save(folder)
+            except PermissionError:
+                showerror('Ошибка', f'Необходимо закрыть файл {folder}')
+                logging.exception('ошибка сохранения книги')
+            else:
+                logging.info('Сохранение книги')
+            browser.back()          # переходим назад на страницу поиска по номеру
+            logging.info('The Browser go back')
+    wb.close()
+    logging.info('The end of the parsing')
+    text_log.configure(state='disabled')
+    showinfo('Уведомление', 'Проверка завершена')
 
 def parser(html, number):
     logging.info('In parser function')
@@ -231,7 +358,7 @@ def parser(html, number):
         text_log.insert(END, f"Номер {number}, не найдена дата окончания работ (E)\n")
         list_excel.append("")
     else:
-        span_end = pr_date_registration[0]
+        span_end = pr_date_end[0]
         date_end = span_end.find_next('span').string
         list_excel.append(date_end)
         logging.info(f'append in list date of end {date_end}')
@@ -543,32 +670,83 @@ def parser(html, number):
 
     return list_excel
 
+def parser2(html, number):
+    logging.info('In parser function')
+    list_excel = []
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        # soup2 = BeautifulSoup(html, 'lxml')
+        logging.info("The soup is creating successful")
+    except Exception:
+        logging.exception("Problem with creating the soup")
+        return
+
+    # парсинг даты завершения работ E
+    pr_date_end = soup.find_all('div', class_=class_date_end)
+    logging.info('parsing date of ending')
+    if len(pr_date_end) == 0:
+        text_log.insert(END, f"Номер {number}, не найдена дата окончания работ (E)\n")
+        list_excel.append("")
+    else:
+        span_end = pr_date_end[0]
+        date_end = span_end.find_next('span').string
+        list_excel.append(date_end)
+        logging.info(f'append in list date of end {date_end}')
+
+    # парсинг уведомления о завершении работ F
+    pr_notify_end = soup.find_all('div', class_='field-name-field-fgpn-notify-end-rel')
+    if len(pr_notify_end) == 0:
+        text_log.insert(END, f"Номер {number}, не найдено уведомление о завершении работ (F)\n")
+        list_excel.append("")
+    else:
+        a = pr_notify_end[0]
+        notify_end = a.find_next('a').string
+        m = re.search('..-..-....-......', notify_end)
+        if m is None:
+            list_excel.append("")
+            text_log.insert(END, f"Номер {number}, не найдено уведомление о завершении работ (F)\n")
+            logging.info('не найдена подстрока в строке')
+        else:
+            list_excel.append(m.group())
+        logging.info(f'append in list the {m.group()}')
+
+    return list_excel
+
 def start():
+    text_log.configure(state='normal')
     folder_xl = txt_folder_xl.get()
     get_number(folder_xl)
 
+def check():
+    text_log.configure(state='normal')
+    folder_xl = txt_folder_xl.get()
+    get_number2(folder_xl)
+
 
 window = Tk()
-window.title('Программа')
-window.geometry('570x280')
+window.title('Поиск информации')
+window.geometry('400x350')
 lbl_login = Label(window, text="Логин:")
 lbl_password = Label(window, text="Пароль:")
-lbl_folder = Label(window, text='Расположение файла Excel')
+lbl_folder = Label(window, text='Расположение файла Excel:')
 txt_login = Entry(window, width=20)
 txt_password = Entry(window, width=20)
 txt_folder_xl = Entry(window, width=20, state='disabled')
 btn_entry = Button(window, text='Войти', width=17, command=entry)
 btn_start = Button(window, text='Начать заполнение', state='disabled', command=start)
+btn_check = Button(window, text='Проверить ячейки', state='disabled', command=check)
 
-text_log = scrolledtext.ScrolledText(window, width=40, height=5, wrap=tkinter.WORD)
+text_log = scrolledtext.ScrolledText(window, width=38, height=10, wrap=tkinter.WORD, state='disabled')
 
-lbl_login.grid(column=0, row=0)
+lbl_login.grid(column=0, row=0, sticky=E)
 txt_login.grid(column=1, row=0)
-lbl_password.grid(column=0, row=1)
+lbl_password.grid(column=0, row=1, sticky=E)
 txt_password.grid(column=1, row=1)
-btn_entry.grid(column=1, row=2)
-lbl_folder.grid(column=0, row=3)
+btn_entry.grid(column=1, row=2, pady=10)
+lbl_folder.grid(column=0, row=3, sticky=E)
 txt_folder_xl.grid(column=1, row=3)
-btn_start.grid(column=1, row=4)
-text_log.grid(column=1, row=5, pady = 10, padx = 10)
+btn_start.grid(column=0, row=4, pady=10)
+btn_check.grid(column=1, row=4, pady=10)
+text_log.grid(column=0, row=5, pady=10, padx=10, columnspan=2)
+# window.iconbitmap('3-search-cat_icon-icons.com_76679.ico')
 window.mainloop()
