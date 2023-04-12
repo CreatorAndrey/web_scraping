@@ -3,6 +3,7 @@
 # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path
 # https://www.geeksforgeeks.org/python-tkinter-scrolledtext-widget/
 
+# https://stackoverflow.com/questions/27050492/how-do-you-create-a-tkinter-gui-stop-button-to-break-an-infinite-loop
 # https://ru.stackoverflow.com/questions/1194013/%D0%9F%D1%80%D0%B8%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D1%8B-%D0%BF%D0%BE-%D0%BD%D0%B0%D0%B6%D0%B0%D1%82%D0%B8%D1%8E-%D0%BA%D0%BD%D0%BE%D0%BF%D0%BA%D0%B8
 import tkinter
 
@@ -14,13 +15,15 @@ from selenium.webdriver.common.by import By
 from time import sleep
 from tkinter import *
 from tkinter.messagebox import showerror, showinfo
-from tkinter import ttk
+import tkinter.ttk as ttk
 from tkinter import scrolledtext
 from openpyxl import load_workbook
 import logging
 from bs4 import BeautifulSoup
 import lxml
 import re
+from threading import Thread
+
 
 logging.basicConfig(level=logging.DEBUG, filename='log.log', filemode='w',
                     format="%(asctime)s %(levelname)s %(message)s")
@@ -44,6 +47,8 @@ url_entry = 'https://passport.cgu.mchs.ru/oauth/login?login_challenge=9043dbc4be
 s = Service("chromedriver.exe")
 browser = Chrome(service=s)
 
+flag_pause = False
+k = 2
 
 def entry():
     try:
@@ -101,7 +106,14 @@ def entry():
 
 
 def get_number(folder):
-    logging.info('Успешно вошли в функцию get_number')
+    logging.info('Успешно вошли в функцию get_number, в потоке')
+    while flag_pause == True:
+        btn_pause.configure(state='normal')
+        btn_pause.configure(text='Продолжить')
+        logging.info(f'flag_pause = {flag_pause}')
+        pass
+    progress_bar['value'] = 0
+    window.update()
     try:
         wb = load_workbook(folder)
         logging.info(f'Книга успешно открыта по адресу {folder}')
@@ -134,8 +146,18 @@ def get_number(folder):
     br_filter_open.click()          # кликаем на кнопку фильтра
     numbers_excel = ws['C']         # берем все ячейки C
     count = len(numbers_excel)      # считаем кол-во ячеек непустых
+    progress_bar['value'] += 1
+    window.update()
     for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
         for cell in col:
+            while flag_pause == True:
+                btn_pause.configure(state='normal')
+                btn_pause.configure(text='Продолжить')
+                logging.info(f'flag_pause = {flag_pause}')
+                pass
+            if progress_bar['value'] > 100:
+                progress_bar['value'] = 0
+                window.update()
             number = cell.value
             logging.info(f"Take number {number} from worklist")
             if number is None:          # если в excel пустоя ячейка (отсутствует номер), исключаем None. Иначе ошибка TypeError в send_keys()
@@ -179,6 +201,10 @@ def get_number(folder):
                 # код с переходом на следующий элемент
                 text_log.insert(END, f"Номер {number}, не найден 'файлик' (D)\n")
                 break
+
+            progress_bar['value'] += 1
+            window.update()
+
             br_open.click()         # нажимаем на кнопку с файликом
             logging.info('Click on the img_file')
             html = browser.page_source          # берем html страницы
@@ -191,6 +217,13 @@ def get_number(folder):
             r = cell.row
             c = cell.column + 1
             for i in list_excel:
+                if progress_bar['value'] > 100:
+                    progress_bar['value'] = 0
+                    window.update()
+
+                progress_bar['value'] += 1
+                window.update()
+
                 logging.info(f'insert {i}')
                 try:
                     ws.cell(row=r, column=c, value=i)
@@ -205,15 +238,30 @@ def get_number(folder):
                 logging.exception('ошибка сохранения книги')
             else:
                 logging.info('Сохранение книги')
+
+                progress_bar['value'] += 1
+                window.update()
+
             browser.back()          # переходим назад на страницу поиска по номеру
             logging.info('The Browser go back')
     wb.close()
     logging.info('The end of the parsing')
     text_log.configure(state='disabled')
+    btn_check.configure(state='normal')
+    btn_start.configure(state='normal')
     showinfo('Уведомление', 'Сбор информации завершен')
 
+    progress_bar['value'] = 100
+    window.update()
+
+
 def get_number2(folder):
-    logging.info('Успешно вошли в функцию get_number2')
+    logging.info('Успешно вошли в функцию get_number2, в потоке')
+    while flag_pause == True:
+        btn_pause.configure(state='normal')
+        btn_pause.configure(text='Продолжить')
+        logging.info(f'flag_pause = {flag_pause}')
+        pass
     try:
         wb = load_workbook(folder)
         logging.info(f'Книга успешно открыта по адресу {folder}')
@@ -248,6 +296,11 @@ def get_number2(folder):
     count = len(numbers_excel)      # считаем кол-во ячеек непустых
     for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
         for cell in col:
+            while flag_pause == True:
+                btn_pause.configure(state='normal')
+                btn_pause.configure(text='Продолжить')
+                logging.info(f'flag_pause = {flag_pause}')
+                pass
             number = cell.value
             logging.info(f"Take number {number} from worklist")
             if number is None:          # если в excel пустоя ячейка (отсутствует номер), исключаем None. Иначе ошибка TypeError в send_keys()
@@ -326,9 +379,14 @@ def get_number2(folder):
     wb.close()
     logging.info('The end of the parsing')
     text_log.configure(state='disabled')
+    btn_start.configure(state='normal')
+    btn_check.configure(state='normal')
     showinfo('Уведомление', 'Проверка завершена')
 
 def parser(html, number):
+    progress_bar['value'] += 1
+    window.update()
+
     logging.info('In parser function')
     list_excel = []
     try:
@@ -404,6 +462,9 @@ def parser(html, number):
         list_excel.append(number_l)
         logging.info(f'append in list the {number_l}')
 
+    progress_bar['value'] += 1
+    window.update()
+
     #парсинг места осуществления деятельности I
     try:
         br_open_a = browser.find_element(By.XPATH, xpath_open_a)
@@ -467,6 +528,9 @@ def parser(html, number):
         data_deal = div_data_deal.find_next('div', class_='field-item even').string
         list_excel.append(data_deal)
         logging.info(f'append in list the {data_deal}')
+
+    progress_bar['value'] += 1
+    window.update()
 
     # парсинг номер договора M
     pr_number_deal = soup.find_all('div', class_='field-name-field-fgpn-notify-contract--number')
@@ -537,6 +601,9 @@ def parser(html, number):
         list_excel.append(object_number)
         logging.info(f'append in the list the {object_number}')
 
+    progress_bar['value'] += 1
+    window.update()
+
     # парсинг дата проекта S
     pr_project_data = soup.find_all('div', class_='field-name-field-fgpn-notify-project--date')
     if len(pr_project_data) == 0:
@@ -569,6 +636,9 @@ def parser(html, number):
         author_name = div.find_next('div', class_='field-item even').string
         list_excel.append(author_name)
         logging.info(f'append in the list the {author_name}')
+
+    progress_bar['value'] += 1
+    window.update()
 
     # парсинг отчества проектировщика V
     pr_author_ot = soup.find_all('div', class_='field-name-field-fgpn-notify-project-author--o')
@@ -649,6 +719,9 @@ def parser(html, number):
         list_excel.append(gl_employee_snils)
         logging.info(f'append in the list the {gl_employee_snils}')
 
+    progress_bar['value'] += 1
+    window.update()
+
     # парсинг оборудования, начиная с AC
     data = []
     table = soup2.find('table', class_='tableheader-processed')
@@ -713,19 +786,41 @@ def parser2(html, number):
     return list_excel
 
 def start():
+    btn_check.configure(state='disabled')
     text_log.configure(state='normal')
     folder_xl = txt_folder_xl.get()
-    get_number(folder_xl)
+    logging.info('Создаем поток')
+    t1 = Thread(target=get_number, args=folder_xl, daemon=True)
+    logging.info('старт потока')
+    t1.start()
+    btn_pause.configure(state='normal')
 
 def check():
+    btn_start.configure(state='disabled')
+    btn_check.configure(state='disabled')
     text_log.configure(state='normal')
     folder_xl = txt_folder_xl.get()
-    get_number2(folder_xl)
+    logging.info('Создаем поток')
+    t1 = Thread(target=get_number2, args=folder_xl, daemon=True)
+    logging.info('старт потока')
+    t1.start()
+    btn_pause.configure(state='normal')
 
+def pause():
+    global flag_pause, k
+    logging.info('нажата кнопка пауза')
+    if k % 2 == 0:
+        btn_pause.configure(state='disabled')
+        k += 1
+        flag_pause = True
+    elif k % 2 == 1:
+        btn_pause.configure(text='Пауза')
+        k += 1
+        flag_pause = False
 
 window = Tk()
 window.title('Поиск информации')
-window.geometry('400x350')
+window.geometry('450x350')
 lbl_login = Label(window, text="Логин:")
 lbl_password = Label(window, text="Пароль:")
 lbl_folder = Label(window, text='Расположение файла Excel:')
@@ -735,11 +830,18 @@ txt_folder_xl = Entry(window, width=20, state='disabled')
 btn_entry = Button(window, text='Войти', width=17, command=entry)
 btn_start = Button(window, text='Начать заполнение', state='disabled', command=start)
 btn_check = Button(window, text='Проверить ячейки', state='disabled', command=check)
+btn_pause = Button(window, text='Пауза', state='disabled', command=pause)
+progress_bar = ttk.Progressbar(window, orient="horizontal",
+                               mode="determinate", maximum=100, value=0)
 
 text_log = scrolledtext.ScrolledText(window, width=38, height=10, wrap=tkinter.WORD, state='disabled')
 
 lbl_login.grid(column=0, row=0, sticky=E)
 txt_login.grid(column=1, row=0)
+progress_bar.grid(column=2, row=0)
+window.update()
+progress_bar['value'] = 0
+window.update()
 lbl_password.grid(column=0, row=1, sticky=E)
 txt_password.grid(column=1, row=1)
 btn_entry.grid(column=1, row=2, pady=10)
@@ -747,6 +849,7 @@ lbl_folder.grid(column=0, row=3, sticky=E)
 txt_folder_xl.grid(column=1, row=3)
 btn_start.grid(column=0, row=4, pady=10)
 btn_check.grid(column=1, row=4, pady=10)
+btn_pause.grid(column=2, row=4, pady=10)
 text_log.grid(column=0, row=5, pady=10, padx=10, columnspan=2)
 # window.iconbitmap('3-search-cat_icon-icons.com_76679.ico')
 window.mainloop()
