@@ -1,0 +1,9 @@
+2023-05-07 16:04:25,868 DEBUG driver not found in PATH, trying Selenium Manager
+2023-05-07 16:04:25,868 DEBUG Executing: C:\Users\siman\AppData\Local\Temp\_MEI269842\selenium\webdriver\common\windows\selenium-manager.exe --browser chrome
+2023-05-07 16:04:27,871 DEBUG Using driver at: C:\Users\siman\.cache\selenium\chromedriver\win32\112.0.5615.49\chromedriver.exe
+2023-05-07 16:04:28,036 DEBUG Started executable: `chromedriver.exe` in a child process with pid: 24908
+2023-05-07 16:04:28,567 DEBUG POST http://localhost:53991/session {"capabilities": {"firstMatch": [{}], "alwaysMatch": {"browserName": "chrome", "pageLoadStrategy": "normal", "goog:chromeOptions": {"extensions": [], "args": []}}}}
+2023-05-07 16:04:28,567 DEBUG Starting new HTTP connection (1): localhost:53991
+2023-05-07 16:04:29,977 DEBUG http://localhost:53991 "POST /session HTTP/1.1" 200 859
+2023-05-07 16:04:29,977 DEBUG Remote response: status=200 | data={"value":{"capabilities":{"acceptInsecureCerts":false,"browserName":"chrome","browserVersion":"112.0.5615.138","chrome":{"chromedriverVersion":"112.0.5615.49 (bd2a7bcb881c11e8cfe3078709382934e3916914-refs/branch-heads/5615@{#936})","userDataDir":"C:\\Users\\siman\\AppData\\Local\\Temp\\scoped_dir24908_204290142"},"goog:chromeOptions":{"debuggerAddress":"localhost:54012"},"networkConnectionEnabled":false,"pageLoadStrategy":"normal","platformName":"windows","proxy":{},"setWindowRect":true,"strictFileInteractability":false,"timeouts":{"implicit":0,"pageLoad":300000,"script":30000},"unhandledPromptBehavior":"dismiss and notify","webauthn:extension:credBlob":true,"webauthn:extension:largeBlob":true,"webauthn:extension:minPinLength":true,"webauthn:extension:prf":true,"webauthn:virtualAuthenticators":true},"sessionId":"7c2d6cb8ae9e91ab7d8804a8a732e927"}} | headers=HTTPHeaderDict({'Content-Length': '859', 'Content-Type': 'application/json; charset=utf-8', 'cache-control': 'no-cache'})
+2023-05-07 16:04:29,977 DEBUG Finished Request

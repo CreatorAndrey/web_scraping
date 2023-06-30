@@ -2,7 +2,7 @@
 # https://questu.ru/articles/81673/
 # https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path
 # https://www.geeksforgeeks.org/python-tkinter-scrolledtext-widget/
-
+import threading
 # https://stackoverflow.com/questions/27050492/how-do-you-create-a-tkinter-gui-stop-button-to-break-an-infinite-loop
 # https://ru.stackoverflow.com/questions/1194013/%D0%9F%D1%80%D0%B8%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D1%8B-%D0%BF%D0%BE-%D0%BD%D0%B0%D0%B6%D0%B0%D1%82%D0%B8%D1%8E-%D0%BA%D0%BD%D0%BE%D0%BF%D0%BA%D0%B8
 import tkinter
@@ -23,7 +23,10 @@ from bs4 import BeautifulSoup
 import lxml
 import re
 from threading import Thread
-
+from tkinter import filedialog as fd
+import analiz_place
+import analiz_snils
+import analiz_serial_number
 
 logging.basicConfig(level=logging.DEBUG, filename='log.log', filemode='w',
                     format="%(asctime)s %(levelname)s %(message)s")
@@ -49,6 +52,13 @@ browser = Chrome(service=s)
 
 flag_pause = False
 k = 2
+
+def pause_check():
+    if flag_pause:
+        btn_pause.configure(state='normal')
+        btn_pause.configure(text='Продолжить')
+        while flag_pause:
+            pass
 
 def entry():
     try:
@@ -90,12 +100,12 @@ def entry():
             browser.switch_to.window(browser.window_handles[1])         # переключаемся на вторую вкладку
         except Exception:
             showerror('Ошибка', 'Ожидание второй вкладки, а в браузере всего лишь одна')
-        try:
-            br_notice = browser.find_element(By.XPATH, xpath_notice)        # ищем ссылку под названием "уведомление"
-        except Exception:
-            showerror('Ошибка', 'Не найдена ссылка')
-            return
-        br_notice.click()           # кликаем и переходим на страницу с поиском
+        # try:
+        #     br_notice = browser.find_element(By.XPATH, xpath_notice)        # ищем ссылку под названием "уведомление"
+        # except Exception:
+        #     showerror('Ошибка', 'Не найдена ссылка')
+        #     return
+        # br_notice.click()           # кликаем и переходим на страницу с поиском
         txt_folder_xl.configure(state='normal')
         btn_start.configure(state='normal')
         btn_check.configure(state='normal')
@@ -107,11 +117,7 @@ def entry():
 
 def get_number(folder):
     logging.info('Успешно вошли в функцию get_number, в потоке')
-    while flag_pause == True:
-        btn_pause.configure(state='normal')
-        btn_pause.configure(text='Продолжить')
-        logging.info(f'flag_pause = {flag_pause}')
-        pass
+    # # pause_check()
     progress_bar['value'] = 0
     window.update()
     try:
@@ -141,7 +147,9 @@ def get_number(folder):
         br_filter_open = browser.find_element(By.XPATH, xpath_filter_open)      # находим кнопку фильтра
         logging.info("The filter is opening successfully")
     except Exception:
+        showerror('Не найден фильтр')
         logging.exception("The filter isn't opening successfully")
+        wb.close()
         return
     br_filter_open.click()          # кликаем на кнопку фильтра
     numbers_excel = ws['C']         # берем все ячейки C
@@ -150,11 +158,7 @@ def get_number(folder):
     window.update()
     for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
         for cell in col:
-            while flag_pause == True:
-                btn_pause.configure(state='normal')
-                btn_pause.configure(text='Продолжить')
-                logging.info(f'flag_pause = {flag_pause}')
-                pass
+            # # pause_check()
             if progress_bar['value'] > 100:
                 progress_bar['value'] = 0
                 window.update()
@@ -169,27 +173,33 @@ def get_number(folder):
             except Exception:
                 showerror('Ошибка', 'Не удается найти элемент')
                 logging.exception('Элемент br_number не найден')
+                wb.close()
                 return
+            # pause_check()
             try:
                 br_apply = browser.find_element(By.XPATH, xpath_apply)  # находим поле с кнопкой "применить"
                 logging.info('Элемент br_apply упешно найден')
             except Exception:
                 showerror('Ошибка', 'Не удается найти элемент')
                 logging.exception('Элемент br_apply не найден')
+                wb.close()
                 return
             logging.info('Clear the input textarea')
             br_number.clear()
+            # pause_check()
             try:
                 br_number.send_keys(number)         # отправляем номер в поле регистрации
                 logging.info("the number from excel is sended in the br_number complitely ")
             except Exception:
                 logging.exception("the number from excel is not sended in br_number")
+                wb.close()
                 return
             try:
                 br_apply.click()            # нажимаем на кнопку "применить"
                 logging.info("Click on the button_apply is successful")
             except Exception:
                 logging.exception("Click on the button_apply isn't successful")
+                wb.close()
                 return
             sleep(2)
             try:
@@ -201,7 +211,7 @@ def get_number(folder):
                 # код с переходом на следующий элемент
                 text_log.insert(END, f"Номер {number}, не найден 'файлик' (D)\n")
                 break
-
+            # pause_check()
             progress_bar['value'] += 1
             window.update()
 
@@ -212,7 +222,7 @@ def get_number(folder):
             #logging.info(html)
             list_excel = parser(html, number)            # передаем html в парсер и создаем список list_excel
             logging.info('start insert data into excel')
-
+            # pause_check()
             # начинаем подстановку в Excel
             r = cell.row
             c = cell.column + 1
@@ -220,7 +230,7 @@ def get_number(folder):
                 if progress_bar['value'] > 100:
                     progress_bar['value'] = 0
                     window.update()
-
+                # pause_check()
                 progress_bar['value'] += 1
                 window.update()
 
@@ -232,6 +242,7 @@ def get_number(folder):
                 else:
                     logging.info('Найдена ячейка и заплнена')
                 c += 1
+                # pause_check()
             try:
                 wb.save(folder)
             except Exception:
@@ -241,9 +252,11 @@ def get_number(folder):
 
                 progress_bar['value'] += 1
                 window.update()
+            # pause_check()
 
             browser.back()          # переходим назад на страницу поиска по номеру
             logging.info('The Browser go back')
+            # pause_check()
     wb.close()
     logging.info('The end of the parsing')
     text_log.configure(state='disabled')
@@ -253,15 +266,14 @@ def get_number(folder):
 
     progress_bar['value'] = 100
     window.update()
+    # pause_check()
+    logging.info('поток завершен')
 
 
 def get_number2(folder):
+    progress_bar['value'] = 0
     logging.info('Успешно вошли в функцию get_number2, в потоке')
-    while flag_pause == True:
-        btn_pause.configure(state='normal')
-        btn_pause.configure(text='Продолжить')
-        logging.info(f'flag_pause = {flag_pause}')
-        pass
+    # pause_check()
     try:
         wb = load_workbook(folder)
         logging.info(f'Книга успешно открыта по адресу {folder}')
@@ -269,17 +281,20 @@ def get_number2(folder):
         showerror('Ошибка', 'Не удается подключиться к книге Excel')
         logging.exception(f'Не удается подключиться к книге по пути {folder}')
         return
+    # pause_check()
     try:
         ws = wb['Главный_лист']
         logging.info('Лист Excel успешно открыт')
     except Exception:
         showerror('Ошибка', 'Не найден лист')
         logging.exception(f'Лист не найден')
+        wb.close()
         return
+    # pause_check()
     try:
         wb.save(folder)
     except PermissionError:
-        showerror('Ошибка', f'Необходимо закрыть файл {folder}. Закройте файл и нажмите на кнопку заново заново')
+        showerror('Ошибка', f'Необходимо закрыть файл {folder}. Закройте файл и нажмите на кнопку заново')
         logging.exception('файл открыт')
         wb.close()
         return
@@ -289,18 +304,22 @@ def get_number2(folder):
         br_filter_open = browser.find_element(By.XPATH, xpath_filter_open)      # находим кнопку фильтра
         logging.info("The filter is opening successfully")
     except Exception:
+        showerror('Не найден фильтр')
         logging.exception("The filter isn't opening successfully")
+        wb.close()
         return
+    progress_bar['value'] += 1
+    # pause_check()
     br_filter_open.click()          # кликаем на кнопку фильтра
     numbers_excel = ws['C']         # берем все ячейки C
     count = len(numbers_excel)      # считаем кол-во ячеек непустых
+    # pause_check()
     for col in ws.iter_cols(min_row=2, min_col=3, max_col=3, max_row=count):
         for cell in col:
-            while flag_pause == True:
-                btn_pause.configure(state='normal')
-                btn_pause.configure(text='Продолжить')
-                logging.info(f'flag_pause = {flag_pause}')
-                pass
+            if progress_bar['value'] > 100:
+                progress_bar['value'] = 0
+                window.update()
+            # pause_check()
             number = cell.value
             logging.info(f"Take number {number} from worklist")
             if number is None:          # если в excel пустоя ячейка (отсутствует номер), исключаем None. Иначе ошибка TypeError в send_keys()
@@ -312,14 +331,18 @@ def get_number2(folder):
             except Exception:
                 showerror('Ошибка', 'Не удается найти элемент')
                 logging.exception('Элемент br_number не найден')
+                wb.close()
                 return
+            # pause_check()
             try:
                 br_apply = browser.find_element(By.XPATH, xpath_apply)  # находим поле с кнопкой "применить"
                 logging.info('Элемент br_apply упешно найден')
             except Exception:
                 showerror('Ошибка', 'Не удается найти элемент')
                 logging.exception('Элемент br_apply не найден')
+                wb.close()
                 return
+            # pause_check()
             logging.info('Clear the input textarea')
             br_number.clear()
             try:
@@ -327,12 +350,15 @@ def get_number2(folder):
                 logging.info("the number from excel is sended in the br_number complitely ")
             except Exception:
                 logging.exception("the number from excel is not sended in br_number")
+                wb.close()
                 return
+            # pause_check()
             try:
                 br_apply.click()            # нажимаем на кнопку "применить"
                 logging.info("Click on the button_apply is successful")
             except Exception:
                 logging.exception("Click on the button_apply isn't successful")
+                wb.close()
                 return
             sleep(2)
             try:
@@ -344,6 +370,8 @@ def get_number2(folder):
                 # код с переходом на следующий элемент
                 text_log.insert(END, f"Номер {number}, не найден 'файлик' (D)\n")
                 break
+            # pause_check()
+            progress_bar['value'] += 1
             br_open.click()         # нажимаем на кнопку с файликом
             logging.info('Click on the img_file')
             html = browser.page_source          # берем html страницы
@@ -351,12 +379,18 @@ def get_number2(folder):
             #logging.info(html)
             list_excel = parser2(html, number)            # передаем html в парсер и создаем список list_excel
             logging.info('start insert data into excel')
+            # pause_check()
 
             # начинаем подстановку в Excel
             r = cell.row
             c = cell.column + 2
             for i in list_excel:
+                if progress_bar['value'] > 100:
+                    progress_bar['value'] = 0
+                    window.update()
                 logging.info(f'insert {i}')
+                # pause_check()
+                progress_bar['value'] += 1
                 if i == "":
                     c += 1
                     break
@@ -376,14 +410,19 @@ def get_number2(folder):
                 logging.info('Сохранение книги')
             browser.back()          # переходим назад на страницу поиска по номеру
             logging.info('The Browser go back')
+            # pause_check()
     wb.close()
     logging.info('The end of the parsing')
     text_log.configure(state='disabled')
     btn_start.configure(state='normal')
     btn_check.configure(state='normal')
+    # pause_check()
+    progress_bar['value'] = 100
     showinfo('Уведомление', 'Проверка завершена')
+    logging.info('поток завершен')
 
 def parser(html, number):
+    # pause_check()
     progress_bar['value'] += 1
     window.update()
 
@@ -396,6 +435,7 @@ def parser(html, number):
     except Exception:
         logging.exception("Problem with creating the soup")
         return
+    # pause_check()
 
     # парсинг даты регистрации D
     pr_date_registration = soup.find_all('div', class_=class_date_registration)
@@ -409,6 +449,7 @@ def parser(html, number):
         list_excel.append(date_reg)
         logging.info(f'Append to the list the date of reg. {date_reg}')
 
+    # pause_check()
     # парсинг даты завершения работ E
     pr_date_end = soup.find_all('div', class_=class_date_end)
     logging.info('parsing date of ending')
@@ -420,6 +461,7 @@ def parser(html, number):
         date_end = span_end.find_next('span').string
         list_excel.append(date_end)
         logging.info(f'append in list date of end {date_end}')
+    # pause_check()
 
     # парсинг уведомления о завершении работ F
     pr_notify_end = soup.find_all('div', class_='field-name-field-fgpn-notify-end-rel')
@@ -437,6 +479,7 @@ def parser(html, number):
         else:
             list_excel.append(m.group())
         logging.info(f'append in list the {m.group()}')
+    # pause_check()
 
     # парсинг лицензиат G
     pr_license = soup.find_all('div', class_=class_license)
@@ -449,6 +492,7 @@ def parser(html, number):
         licen = a_lic.find_next('a').string
         list_excel.append(licen)
         logging.info(f'append the {licen}')
+    # pause_check()
 
     # парсинг номер лицензии H
     pr_number_l = soup.find_all('div', class_=class_number_l)
@@ -464,6 +508,7 @@ def parser(html, number):
 
     progress_bar['value'] += 1
     window.update()
+    # pause_check()
 
     #парсинг места осуществления деятельности I
     try:
@@ -490,6 +535,7 @@ def parser(html, number):
             l = a.replace("Адрес: ","")
             list_excel.append(l)
             logging.info(f'append in list the {l}')
+    # pause_check()
 
     # парсинг адреса выполнения работ J
     pr_address_work = soup2.find('div', class_='field-name-field-gl-adresses')
@@ -504,6 +550,7 @@ def parser(html, number):
             addresses_work += i.text + '\n'
         list_excel.append(addresses_work)
         logging.info(f'append in list the {addresses_work}')
+    # pause_check()
 
     # парсинг даты заявления K
     pr_receive_date = soup.find_all('div', class_='field-name-field-gl-receive-date')
@@ -516,6 +563,7 @@ def parser(html, number):
         receive_date = span_receive_date.find_next('span').string
         list_excel.append(receive_date)
         logging.info(f'append in list the {receive_date}')
+    # pause_check()
 
     # парсинг даты договора L
     pr_data_deal = soup.find_all('div', class_='field-name-field-fgpn-notify-contract--date')
@@ -531,6 +579,7 @@ def parser(html, number):
 
     progress_bar['value'] += 1
     window.update()
+    # pause_check()
 
     # парсинг номер договора M
     pr_number_deal = soup.find_all('div', class_='field-name-field-fgpn-notify-contract--number')
@@ -543,6 +592,7 @@ def parser(html, number):
         number_deal = div_number_deal.find_next('div', class_='field-item even').string
         list_excel.append(number_deal)
         logging.info(f'append in list the {number_deal}')
+    # pause_check()
 
     # парсинг заказчика работ N
     pr_customer = soup.find_all('div', class_='field-name-field-fgpn-notify-contract--customer')
@@ -555,6 +605,7 @@ def parser(html, number):
         customer = div_customer.find_next('div', class_='field-item even').string
         list_excel.append(customer)
         logging.info(f'append in the list the {customer}')
+    # pause_check()
 
     # парсинг инн O
     pr_inn = soup.find_all('div', class_='field-name-field-fgpn-notify-contract--inn')
@@ -567,6 +618,7 @@ def parser(html, number):
         inn = div.find_next('div', class_='field-item even').string
         list_excel.append(inn)
         logging.info(f'append in the list the {inn}')
+    # pause_check()
 
     # парсинг объекта P
     pr_object = soup.find_all('div', class_='field-name-field-fgpn-object-name')
@@ -578,6 +630,7 @@ def parser(html, number):
         object_name = div.find_next('div', class_='field-item even').string
         list_excel.append(object_name)
         logging.info(f'append in the list the {object_name}')
+    # pause_check()
 
     # парсинг вид работы Q
     pr_kind_work = soup.find_all('div', class_='field-name-field-fgpn-notify-kind')
@@ -589,6 +642,7 @@ def parser(html, number):
         kind_work = div.find_next('div', class_='field-item even').string
         list_excel.append(kind_work)
         logging.info(f'append in the list the {kind_work}')
+    # pause_check()
 
     # парсинг номер проекта R
     pr_object_number = soup.find_all('div', class_='field-name-field-fgpn-notify-project--number')
@@ -603,6 +657,7 @@ def parser(html, number):
 
     progress_bar['value'] += 1
     window.update()
+    # pause_check()
 
     # парсинг дата проекта S
     pr_project_data = soup.find_all('div', class_='field-name-field-fgpn-notify-project--date')
@@ -614,6 +669,7 @@ def parser(html, number):
         project_data = div.find_next('div', class_='field-item even').string
         list_excel.append(project_data)
         logging.info(f'append in the list the {project_data}')
+    # pause_check()
 
     # парсинг фамилия проектировщика T
     pr_author_surname = soup.find_all('div', class_='field-name-field-fgpn-notify-project-author--f')
@@ -625,6 +681,7 @@ def parser(html, number):
         author_surname = div.find_next('div', class_='field-item even').string
         list_excel.append(author_surname)
         logging.info(f'append in the list the {author_surname}')
+    # pause_check()
 
     # парсинг имени проектировщика U
     pr_author_name = soup.find_all('div', class_='field-name-field-fgpn-notify-project-author--i')
@@ -639,6 +696,7 @@ def parser(html, number):
 
     progress_bar['value'] += 1
     window.update()
+    # pause_check()
 
     # парсинг отчества проектировщика V
     pr_author_ot = soup.find_all('div', class_='field-name-field-fgpn-notify-project-author--o')
@@ -651,6 +709,7 @@ def parser(html, number):
         list_excel.append(author_ot)
         logging.info(f'append in the list the {author_ot}')
 
+    # pause_check()
 
     # парсинг номер аттестата W
     pr_number_diplom = soup.find_all('div', class_='field-name-field-fgpn-notify-project-author--cert-number')
@@ -662,6 +721,7 @@ def parser(html, number):
         number_diplom = div.find_next('div', class_='field-item even').string
         list_excel.append(number_diplom)
         logging.info(f'append in the list the {number_diplom}')
+    # pause_check()
 
     # парсинг даты аттестата X
     pr_data_diplom = soup.find_all('div', class_='field-name-field-fgpn-notify-project-author--cert-date')
@@ -674,6 +734,7 @@ def parser(html, number):
         list_excel.append(data_diplom)
         logging.info(f'append in the list the {data_diplom}')
 
+    # pause_check()
 
     # парсинг ответственного фамилия Y
     pr_gl_employee = soup.find_all('div', class_='field-name-field-gl-employee--f')
@@ -685,6 +746,7 @@ def parser(html, number):
         gl_employee = div.find_next('div', class_='field-item even').string
         list_excel.append(gl_employee)
         logging.info(f'append in the list the {gl_employee}')
+    # pause_check()
 
     # парсинг ответственного имя Z
     pr_gl_employee_name = soup.find_all('div', class_='field-name-field-gl-employee--i')
@@ -696,6 +758,7 @@ def parser(html, number):
         gl_employee_name = div.find_next('div', class_='field-item even').string
         list_excel.append(gl_employee_name)
         logging.info(f'append in the list the {gl_employee_name}')
+    # pause_check()
 
     # парсинг ответственного отчество АА
     pr_gl_employee_ot = soup.find_all('div', class_='field-name-field-gl-employee--o')
@@ -707,6 +770,7 @@ def parser(html, number):
         gl_employee_ot = div.find_next('div', class_='field-item even').string
         list_excel.append(gl_employee_ot)
         logging.info(f'append in the list the {gl_employee_ot}')
+    # pause_check()
 
     # парсинг ответственного снилса АB
     pr_gl_employee_snils = soup.find_all('div', class_='field-name-field-gl-employee--snils')
@@ -721,6 +785,7 @@ def parser(html, number):
 
     progress_bar['value'] += 1
     window.update()
+    # pause_check()
 
     # парсинг оборудования, начиная с AC
     data = []
@@ -744,6 +809,9 @@ def parser(html, number):
     return list_excel
 
 def parser2(html, number):
+    # pause_check()
+    progress_bar['value'] += 10
+    window.update()
     logging.info('In parser function')
     list_excel = []
     try:
@@ -753,6 +821,7 @@ def parser2(html, number):
     except Exception:
         logging.exception("Problem with creating the soup")
         return
+    # pause_check()
 
     # парсинг даты завершения работ E
     pr_date_end = soup.find_all('div', class_=class_date_end)
@@ -765,6 +834,9 @@ def parser2(html, number):
         date_end = span_end.find_next('span').string
         list_excel.append(date_end)
         logging.info(f'append in list date of end {date_end}')
+    # pause_check()
+    progress_bar['value'] += 10
+    window.update()
 
     # парсинг уведомления о завершении работ F
     pr_notify_end = soup.find_all('div', class_='field-name-field-fgpn-notify-end-rel')
@@ -775,6 +847,7 @@ def parser2(html, number):
         a = pr_notify_end[0]
         notify_end = a.find_next('a').string
         m = re.search('..-..-....-......', notify_end)
+        # pause_check()
         if m is None:
             list_excel.append("")
             text_log.insert(END, f"Номер {number}, не найдено уведомление о завершении работ (F)\n")
@@ -789,59 +862,118 @@ def start():
     btn_check.configure(state='disabled')
     text_log.configure(state='normal')
     folder_xl = txt_folder_xl.get()
-    logging.info('Создаем поток')
-    t1 = Thread(target=get_number, args=folder_xl, daemon=True)
-    logging.info('старт потока')
-    t1.start()
-    btn_pause.configure(state='normal')
+    get_number(folder_xl)
+    # logging.info('Создаем поток')
+    # t1 = Thread(target=get_number, args=folder_xl, daemon=True)
+    # logging.info('старт потока')
+    # t1.start()
+
+    # btn_pause.configure(state='normal')
 
 def check():
     btn_start.configure(state='disabled')
-    btn_check.configure(state='disabled')
     text_log.configure(state='normal')
     folder_xl = txt_folder_xl.get()
-    logging.info('Создаем поток')
-    t1 = Thread(target=get_number2, args=folder_xl, daemon=True)
-    logging.info('старт потока')
-    t1.start()
-    btn_pause.configure(state='normal')
+    # logging.info('Создаем поток')
+    # t1 = Thread(target=get_number2, args=folder_xl, daemon=True)
+    # logging.info('старт потока')
+    # t1.start()
+    get_number2(folder_xl)
+    # btn_pause.configure(state='normal')
 
-def pause():
-    global flag_pause, k
-    logging.info('нажата кнопка пауза')
-    if k % 2 == 0:
-        btn_pause.configure(state='disabled')
-        k += 1
-        flag_pause = True
-    elif k % 2 == 1:
-        btn_pause.configure(text='Пауза')
-        k += 1
-        flag_pause = False
+# def pause():
+#     global flag_pause, k
+#     logging.info('нажата кнопка пауза')
+#     if k % 2 == 0:
+#         btn_pause.configure(state='disabled')
+#         k += 1
+#         flag_pause = True
+#     elif k % 2 == 1:
+#         btn_pause.configure(text='Пауза')
+#         k += 1
+#         flag_pause = False
+
+def analiz_click_t():
+    down = lbl_range_down.get()
+    up = lbl_range_up.get()
+    folder_xl = txt_folder_xl.get()
+    if folder_xl == '':
+        showerror('Ошибка','Выберите файл')
+        return
+    try:
+        down = int(down)
+        up = int(up)
+    except ValueError:
+        showerror('Ошибка', 'Введены не целые числа')
+        return
+    else:
+        if down > up:
+            showerror('Ошибка', 'Введите числа по возрастанию')
+            return
+    btn_analiz.configure(state='disabled')
+    btn_check.configure(state='disabled')
+    btn_start.configure(state='disabled')
+    t1 = Thread(target=analiz_click, args=(down, up, folder_xl), daemon=True)
+    t1.start()
+    t2 = Thread(target=check_progres, args=(), daemon=True)
+    t2.start()
+
+def check_progres():
+    while len(threading.enumerate()) == 3:
+        progress_bar.start(100)
+    progress_bar.stop()
+    progress_bar['value'] = 100
+
+
+def analiz_click(down, up, folder_xl):
+    analiz_snils.main_an(down, up, folder_xl)
+    analiz_place.main_an2(down, up, folder_xl)
+    # analiz_serial_number.main_an(down, up, folder_xl)
+    btn_check.configure(state='normal')
+    btn_start.configure(state='normal')
+    btn_analiz.configure(state='normal')
+
+def open_folder():
+    file_name = fd.askopenfilename()
+    if file_name[-5:] in (".xlsx",".xlsm") or file_name[-4:] == ".xls":
+        pass
+    else:
+        showerror('Ошибка','Выберите файл .xlsx')
+        return
+    txt_folder_xl.insert(0, file_name)
 
 window = Tk()
 window.title('Поиск информации')
-window.geometry('450x350')
+window.geometry('450x450')
 lbl_login = Label(window, text="Логин:")
 lbl_password = Label(window, text="Пароль:")
 lbl_folder = Label(window, text='Расположение файла Excel:')
 txt_login = Entry(window, width=20)
 txt_password = Entry(window, width=20)
-txt_folder_xl = Entry(window, width=20, state='disabled')
+txt_folder_xl = Entry(window, width=20, state='normal')
 btn_entry = Button(window, text='Войти', width=17, command=entry)
 btn_start = Button(window, text='Начать заполнение', state='disabled', command=start)
 btn_check = Button(window, text='Проверить ячейки', state='disabled', command=check)
-btn_pause = Button(window, text='Пауза', state='disabled', command=pause)
+# btn_pause = Button(window, text='Пауза', state='disabled', command=pause)
+btn_analiz = Button(window, text="Анализ", command=analiz_click_t)
 progress_bar = ttk.Progressbar(window, orient="horizontal",
                                mode="determinate", maximum=100, value=0)
+btn_open = Button(window, text="Открыть", command=open_folder)
 
 text_log = scrolledtext.ScrolledText(window, width=38, height=10, wrap=tkinter.WORD, state='disabled')
 
 lbl_login.grid(column=0, row=0, sticky=E)
 txt_login.grid(column=1, row=0)
 progress_bar.grid(column=2, row=0)
+btn_open.grid(column=2, row=3, sticky=W)
 window.update()
 progress_bar['value'] = 0
 window.update()
+txt_down = Label(window, text="Проверка ячеек: от")
+txt_up = Label(window, text="до")
+lbl_range_down = Entry(window, width=5)
+lbl_range_up = Entry(window, width=5)
+
 lbl_password.grid(column=0, row=1, sticky=E)
 txt_password.grid(column=1, row=1)
 btn_entry.grid(column=1, row=2, pady=10)
@@ -849,7 +981,12 @@ lbl_folder.grid(column=0, row=3, sticky=E)
 txt_folder_xl.grid(column=1, row=3)
 btn_start.grid(column=0, row=4, pady=10)
 btn_check.grid(column=1, row=4, pady=10)
-btn_pause.grid(column=2, row=4, pady=10)
+# btn_pause.grid(column=2, row=4, pady=10)
 text_log.grid(column=0, row=5, pady=10, padx=10, columnspan=2)
+txt_down.grid(column=0, row=6, sticky=E)
+lbl_range_down.grid(column=1, row=6, sticky=W)
+txt_up.grid(column=0, row=7, sticky=E)
+lbl_range_up.grid(column=1, row=7, sticky=W)
+btn_analiz.grid(column=2, row=7, sticky=W)
 # window.iconbitmap('3-search-cat_icon-icons.com_76679.ico')
 window.mainloop()
