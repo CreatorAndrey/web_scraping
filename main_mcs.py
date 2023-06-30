@@ -1,12 +1,5 @@
-# https://istories.media/workshops/2021/09/20/parsing-s-pomoshchyu-python-urok-2/
-# https://questu.ru/articles/81673/
-# https://stackoverflow.com/questions/29858752/error-message-chromedriver-executable-needs-to-be-available-in-the-path
-# https://www.geeksforgeeks.org/python-tkinter-scrolledtext-widget/
 import threading
-# https://stackoverflow.com/questions/27050492/how-do-you-create-a-tkinter-gui-stop-button-to-break-an-infinite-loop
-# https://ru.stackoverflow.com/questions/1194013/%D0%9F%D1%80%D0%B8%D0%BE%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B0-%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D1%8B-%D0%BF%D0%BE-%D0%BD%D0%B0%D0%B6%D0%B0%D1%82%D0%B8%D1%8E-%D0%BA%D0%BD%D0%BE%D0%BF%D0%BA%D0%B8
 import tkinter
-
 from selenium.webdriver import Chrome
 # from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
@@ -46,7 +39,7 @@ class_date_end = 'field-name-field-fgpn-notify-end-date'
 class_license = 'field-name-field-fs-subject'
 class_number_l = 'field-name-field-gl-number'
 
-url_entry = 'https://passport.cgu.mchs.ru/oauth/login?login_challenge=9043dbc4bed146c3ae16ef4e6c39fa7e'
+url_entry = '#'
 s = Service("chromedriver.exe")
 browser = Chrome(service=s)
 
